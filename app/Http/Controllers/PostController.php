@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Auth;
+use Gate;
 use App\Like;
 use App\Post;
 use App\Tag;
@@ -54,11 +56,13 @@ class PostController extends Controller
             'title' => 'required|min:5',
             'content' => 'required|min:10'
         ]);
+
         $post = new Post([
             'title' => $request->input('title'),
             'content' => $request->input('content')
         ]);
-        $post->save();
+        
+       Auth::user()->posts()->save($post);
         $post->tags()->attach($request->input('tags') === null ? [] : $request->input('tags'));
 
         return redirect()->route('admin.index')->with('info', 'Post created, Title is: ' . $request->input('title'));
@@ -71,6 +75,9 @@ class PostController extends Controller
             'content' => 'required|min:10'
         ]);
         $post = Post::find($request->input('id'));
+        if (Gate::denies ('update-post', $post)) {
+        return redirect()->back();
+        }
         $post->title = $request->input('title');
         $post->content = $request->input('content');
         $post->save();
@@ -83,6 +90,10 @@ class PostController extends Controller
     public function getAdminDelete($id)
     {
         $post = Post::find($id);
+        if (Gate::denies ('update-post', $post)) {
+        return redirect()->back();
+        }
+        
         $post->likes()->delete();
         $post->tags()->detach();
         $post->delete();
